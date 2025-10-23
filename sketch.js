@@ -69,7 +69,7 @@ function draw() {
         fill(255, 181, 35); 
         text("成績良好，請再接再厲。", width / 2, height / 2 - 50);
         
-    } else if (percentage > 0) {
+    } else if (percentage >= 0) {
         // 低分：顯示警示文本，使用紅色 [6]
         fill(200, 0, 0); 
         text("需要加強努力！", width / 2, height / 2 - 50);
