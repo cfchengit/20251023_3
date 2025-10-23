@@ -3,12 +3,9 @@
 // -----------------------------------------------------------------
 
 
-// let scoreText = "成績分數: " + finalScore + "/" + maxScore;
-// 確保這是全域變數
 let finalScore = 0; 
 let maxScore = 0;
-let scoreText = ""; // 用於 p5.js 繪圖的文字
-
+let scoreText = ""; 
 
 window.addEventListener('message', function (event) {
     // 執行來源驗證...
@@ -25,10 +22,15 @@ window.addEventListener('message', function (event) {
         console.log("新的分數已接收:", scoreText); 
         
         // ----------------------------------------
-        // 關鍵步驟 2: 呼叫重新繪製 (見方案二)
+        // 關鍵修正：根據分數啟動或停止連續繪製 (loop/noLoop)
         // ----------------------------------------
-        if (typeof redraw === 'function') {
-            redraw(); 
+        let percentage = (finalScore / maxScore) * 100;
+        
+        if (percentage >= 90) {
+            loop(); // 90分以上，開始循環繪製 (以運行煙火動畫)
+        } else {
+            noLoop(); // 低於 90分，停止循環繪製 (只繪製一次靜態畫面)
+            redraw(); // 確保靜態畫面更新
         }
     }
 }, false);
@@ -38,28 +40,15 @@ window.addEventListener('message', function (event) {
 // 步驟二：使用 p5.js 繪製分數 (在網頁 Canvas 上顯示)
 // -----------------------------------------------------------------
 
-// === [新增] 煙火相關的全局變數和類別 ===
+// === 煙火相關的全局變數和類別 ===
 let fireworks = []; // 儲存所有的煙火實例
 let gravity;        // 重力向量
-
-function setup() { 
-    // ... (其他設置)
-    createCanvas(windowWidth / 2, windowHeight / 2); 
-    // 啟用 HSB 色彩模式以方便煙火顏色變化
-    colorMode(HSB, 360, 100, 100, 1); 
-    background(0); // 將背景設為黑色以模擬夜空
-    
-    // 設定重力
-    gravity = createVector(0, 0.2); 
-    
-    noLoop(); // 保留 noLoop，只有在分數改變時才繪製
-} 
 
 // Particle 類別：構成煙火爆炸後的每一個點
 class Particle {
     constructor(x, y, hue, firework) {
         this.pos = createVector(x, y);
-        this.firework = firework; // 是否為發射中的火箭 (true) 或爆炸後的碎片 (false)
+        this.firework = firework; 
         this.lifespan = 255;
         this.hue = hue;
         
@@ -164,17 +153,29 @@ class Firework {
 }
 
 
+function setup() { 
+    createCanvas(windowWidth / 2, windowHeight / 2); 
+    // 啟用 HSB 色彩模式
+    colorMode(HSB, 360, 100, 100, 1); 
+    // 設定重力
+    gravity = createVector(0, 0.2); 
+    // 初始背景為全黑
+    background(0); 
+    // 初始不循環繪製，等待分數觸發
+    noLoop(); 
+} 
+
 function draw() { 
-    // 使用半透明的黑色背景，製造拖影效果 (Trail Effect)
+    // 關鍵修正：使用半透明的黑色背景，製造拖影效果 (Trail Effect)
     background(0, 0, 0, 0.2); 
 
     // 計算百分比
     let percentage = (finalScore / maxScore) * 100;
 
-    // --- [新增] 煙火邏輯 ---
+    // --- 煙火邏輯 ---
     if (percentage >= 90) {
         // 高分時，隨機產生新煙火
-        // 這裡設定每 10 幀有 10% 的機率發射新煙火
+        // 每 10 幀有 10% 的機率發射新煙火
         if (frameCount % 10 === 0 && random(1) < 0.1) {
             fireworks.push(new Firework());
         }
@@ -192,7 +193,7 @@ function draw() {
     }
     // ----------------------
     
-    // 畫面中央的文字與幾何圖形顯示 (與分數無關的部分挪到上面，此處只保留繪製)
+    // 畫面中央的文字與幾何圖形顯示 
     
     textSize(80); 
     textAlign(CENTER);
@@ -210,7 +211,7 @@ function draw() {
         fill(255, 181, 35); 
         text("成績良好，請再接再厲。", width / 2, height / 2 - 50);
         
-    } else if (percentage >= 0) {
+    } else if (percentage > 0) {
         // 低分：顯示警示文本，使用紅色
         fill(200, 0, 0); 
         text("需要加強努力！", width / 2, height / 2 - 50);
@@ -235,46 +236,13 @@ function draw() {
         // 畫一個大圓圈代表完美
         fill(0, 200, 50, 150); // 帶透明度
         noStroke();
-        // 將圓圈移到畫布邊緣或其他位置，避免被文字遮擋
         circle(width / 4, height - 100, 100); 
         
     } else if (percentage >= 60) {
         // 畫一個方形
         fill(255, 181, 35, 150);
         rectMode(CENTER);
-        // 將方形移到畫布邊緣或其他位置，避免被文字遮擋
         rect(width / 2, height - 100, 100, 100); 
     }
     
 }
-
-// -----------------------------------------------------------------
-// [重要] 修正 setup 函式，確保只有在分數改變時才呼叫 loop/redraw
-// -----------------------------------------------------------------
-function setup() { 
-    createCanvas(windowWidth / 2, windowHeight / 2); 
-    colorMode(HSB, 360, 100, 100, 1); 
-    gravity = createVector(0, 0.2); 
-    background(0); 
-    noLoop(); // 初始不循環繪製
-}
-
-// 由於 noLoop() 已經在 setup 中設置，我們需要確保在收到高分時啟動循環，低分時停止。
-window.addEventListener('message', function (event) {
-    const data = event.data;
-    
-    if (data && data.type === 'H5P_SCORE_RESULT') {
-        finalScore = data.score; 
-        maxScore = data.maxScore;
-        scoreText = `最終成績分數: ${finalScore}/${maxScore}`;
-        
-        let percentage = (finalScore / maxScore) * 100;
-        
-        if (percentage >= 90) {
-            loop(); // 90分以上，開始循環繪製 (以運行煙火動畫)
-        } else {
-            noLoop(); // 低於 90分，停止循環繪製 (只繪製一次靜態畫面)
-            redraw(); // 確保靜態畫面更新
-        }
-    }
-}, false);
